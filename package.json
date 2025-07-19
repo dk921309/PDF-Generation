@@ -1,0 +1,13 @@
+{
+  "name": "pdf-generator-api",
+  "version": "1.0.0",
+  "description": "Simple PDF generation API",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "pdfkit": "^0.14.0"
+  }
+}
