@@ -168,22 +168,48 @@ function addChart(doc, chartData, yPos) {
   // Chart area
   const chartWidth = 400;
   const chartHeight = 200;
-  const maxValue = Math.max(...chartData.datasets.flatMap(d => d.data));
+  const maxValue = Math.max(...chartData.datasets.flatMap(d => d.data.map(point => point.value)));
 
   // Chart border
   doc.rect(50, yPos, chartWidth, chartHeight).stroke();
 
+  // Time series processing
+  const allDates = chartData.datasets[0].data.map(point => new Date(point.date));
+  const minDate = Math.min(...allDates);
+  const maxDate = Math.max(...allDates);
+  const dateRange = maxDate - minDate;
+
   // Draw lines for each dataset
   chartData.datasets.forEach((dataset, datasetIndex) => {
     const color = dataset.color;
+    let prevX = null, prevY = null;
 
-    // Draw data points
-    dataset.data.forEach((value, pointIndex) => {
-      const x = 50 + (pointIndex * (chartWidth / (chartData.labels.length - 1)));
-      const y = yPos + chartHeight - ((value / maxValue) * chartHeight);
+    // Draw data points and connect with lines
+    dataset.data.forEach((point, pointIndex) => {
+      const datePos = (new Date(point.date) - minDate) / dateRange;
+      const x = 50 + (datePos * chartWidth);
+      const y = yPos + chartHeight - ((point.value / maxValue) * chartHeight);
 
-      doc.circle(x, y, 3).fillColor(color).fill();
-      doc.fontSize(8).fillColor('black').text(value.toString(), x - 10, y - 15);
+      // Draw line from previous point
+      if (prevX !== null && prevY !== null) {
+        doc.moveTo(prevX, prevY)
+          .lineTo(x, y)
+          .strokeColor(color)
+          .stroke();
+      }
+
+      // Draw data point
+      doc.circle(x, y, 3)
+        .fillColor(color)
+        .fill();
+
+      // Draw value label
+      doc.fontSize(8)
+        .fillColor('black')
+        .text(point.value.toString(), x - 10, y - 15);
+
+      prevX = x;
+      prevY = y;
     });
 
     // Legend
@@ -192,10 +218,13 @@ function addChart(doc, chartData, yPos) {
     doc.fontSize(10).fillColor('black').text(dataset.label, 70, legendY + 2);
   });
 
-  // X-axis labels
-  chartData.labels.forEach((label, index) => {
-    const x = 50 + (index * (chartWidth / (chartData.labels.length - 1)));
-    doc.fontSize(9).text(label, x - 15, yPos + chartHeight + 5);
+  // X-axis time labels (show every few points to avoid crowding)
+  const timeLabels = chartData.datasets[0].data.filter((_, index) => index % Math.ceil(chartData.datasets[0].data.length / 5) === 0);
+  timeLabels.forEach((point) => {
+    const datePos = (new Date(point.date) - minDate) / dateRange;
+    const x = 50 + (datePos * chartWidth);
+    const formattedDate = new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    doc.fontSize(8).fillColor('black').text(formattedDate, x - 20, yPos + chartHeight + 5);
   });
 
   return yPos + chartHeight + 60 + (chartData.datasets.length * 15);
@@ -240,22 +269,48 @@ function getSampleData() {
             title: 'Performance Chart',
             type: 'chart',
             data: {
-              title: 'Monthly Performance Metrics',
-              labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
+              title: 'Performance Metrics Time Series',
               datasets: [
                 {
                   label: 'Tasks Completed',
-                  data: [12, 19, 15, 25, 22],
+                  data: [
+                    { date: '2024-01-01', value: 12 },
+                    { date: '2024-01-15', value: 19 },
+                    { date: '2024-02-01', value: 15 },
+                    { date: '2024-02-15', value: 25 },
+                    { date: '2024-03-01', value: 22 },
+                    { date: '2024-03-15', value: 28 },
+                    { date: '2024-04-01', value: 24 },
+                    { date: '2024-04-15', value: 30 }
+                  ],
                   color: '#3498db'
                 },
                 {
                   label: 'Bug Fixes',
-                  data: [5, 8, 6, 12, 10],
+                  data: [
+                    { date: '2024-01-01', value: 5 },
+                    { date: '2024-01-15', value: 8 },
+                    { date: '2024-02-01', value: 6 },
+                    { date: '2024-02-15', value: 12 },
+                    { date: '2024-03-01', value: 10 },
+                    { date: '2024-03-15', value: 14 },
+                    { date: '2024-04-01', value: 11 },
+                    { date: '2024-04-15', value: 16 }
+                  ],
                   color: '#e74c3c'
                 },
                 {
                   label: 'Code Reviews',
-                  data: [8, 12, 10, 18, 15],
+                  data: [
+                    { date: '2024-01-01', value: 8 },
+                    { date: '2024-01-15', value: 12 },
+                    { date: '2024-02-01', value: 10 },
+                    { date: '2024-02-15', value: 18 },
+                    { date: '2024-03-01', value: 15 },
+                    { date: '2024-03-15', value: 20 },
+                    { date: '2024-04-01', value: 17 },
+                    { date: '2024-04-15', value: 23 }
+                  ],
                   color: '#2ecc71'
                 }
               ]
