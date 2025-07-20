@@ -8,7 +8,7 @@ Simple Node.js API that generates PDF reports with dynamic data.
 2. **Header with logos** - Left and right logo placeholders  
 3. **Sections** - Dynamic sections with headings and details
 4. **Borderless tables** - Key-value pairs, handles text overflow
-5. **Line charts** - Multiple data series with colors and legends
+5. **Time-based line charts** - Y-axis shows time (HH:MM), smooth curves with multiple data points
 6. **Page numbers** - Footer pagination
 7. **Person details** - Different fields on first vs subsequent pages
 
@@ -47,7 +47,9 @@ curl -X POST http://localhost:3000/generate-pdf -o report.pdf
    - **Header with BrainWave logos** (left and right)
    - **Person details section** (4 fields on page 1, 8 fields on page 2)
    - **Dynamic sections with borderless tables**
-   - **Line charts** with multiple data series and legends
+   - **Time-based line charts** with Y-axis showing time (HH:MM format)
+   - **Smooth curves** with 12+ data points per series for better visualization
+   - **Multiple colored data series** with legends
    - **Correct page numbering** at bottom
 
 ✅ **Fixed Issues:**
