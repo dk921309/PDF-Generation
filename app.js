@@ -168,45 +168,55 @@ function addChart(doc, chartData, yPos) {
   // Chart area
   const chartWidth = 400;
   const chartHeight = 200;
-  const maxValue = Math.max(...chartData.datasets.flatMap(d => d.data.map(point => point.value)));
+
+  // Convert time strings to minutes for calculation
+  const timeToMinutes = (timeStr) => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+
+  const minutesToTime = (minutes) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+  };
+
+  // Find min and max time values for Y-axis scaling
+  const allTimeValues = chartData.datasets.flatMap(d => d.data.map(point => timeToMinutes(point.timeValue)));
+  const minTime = Math.min(...allTimeValues);
+  const maxTime = Math.max(...allTimeValues);
+  const timeRange = maxTime - minTime;
 
   // Chart border
   doc.rect(50, yPos, chartWidth, chartHeight).stroke();
 
-  // Time series processing
-  const allDates = chartData.datasets[0].data.map(point => new Date(point.date));
-  const minDate = Math.min(...allDates);
-  const maxDate = Math.max(...allDates);
-  const dateRange = maxDate - minDate;
+  // X-axis processing (points)
+  const maxPoints = Math.max(...chartData.datasets.map(d => d.data.length));
 
   // Draw lines for each dataset
   chartData.datasets.forEach((dataset, datasetIndex) => {
     const color = dataset.color;
     let prevX = null, prevY = null;
 
-    // Draw data points and connect with lines
+    // Draw data points and connect with smooth lines
     dataset.data.forEach((point, pointIndex) => {
-      const datePos = (new Date(point.date) - minDate) / dateRange;
-      const x = 50 + (datePos * chartWidth);
-      const y = yPos + chartHeight - ((point.value / maxValue) * chartHeight);
+      const x = 50 + ((pointIndex / (dataset.data.length - 1)) * chartWidth);
+      const timeMinutes = timeToMinutes(point.timeValue);
+      const y = yPos + chartHeight - (((timeMinutes - minTime) / timeRange) * chartHeight);
 
       // Draw line from previous point
       if (prevX !== null && prevY !== null) {
         doc.moveTo(prevX, prevY)
           .lineTo(x, y)
           .strokeColor(color)
+          .lineWidth(2)
           .stroke();
       }
 
       // Draw data point
-      doc.circle(x, y, 3)
+      doc.circle(x, y, 2)
         .fillColor(color)
         .fill();
-
-      // Draw value label
-      doc.fontSize(8)
-        .fillColor('black')
-        .text(point.value.toString(), x - 10, y - 15);
 
       prevX = x;
       prevY = y;
@@ -218,16 +228,37 @@ function addChart(doc, chartData, yPos) {
     doc.fontSize(10).fillColor('black').text(dataset.label, 70, legendY + 2);
   });
 
-  // X-axis time labels (show every few points to avoid crowding)
-  const timeLabels = chartData.datasets[0].data.filter((_, index) => index % Math.ceil(chartData.datasets[0].data.length / 5) === 0);
-  timeLabels.forEach((point) => {
-    const datePos = (new Date(point.date) - minDate) / dateRange;
-    const x = 50 + (datePos * chartWidth);
-    const formattedDate = new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    doc.fontSize(8).fillColor('black').text(formattedDate, x - 20, yPos + chartHeight + 5);
-  });
+  // Y-axis time labels (left side)
+  const timeStep = Math.ceil(timeRange / 6); // Show ~6 time labels
+  for (let i = 0; i <= 6; i++) {
+    const timeMinutes = minTime + (i * timeStep);
+    if (timeMinutes <= maxTime) {
+      const y = yPos + chartHeight - (((timeMinutes - minTime) / timeRange) * chartHeight);
+      const timeLabel = minutesToTime(timeMinutes);
+      doc.fontSize(8).fillColor('black').text(timeLabel, 15, y - 3);
 
-  return yPos + chartHeight + 60 + (chartData.datasets.length * 15);
+      // Grid line
+      doc.moveTo(45, y)
+        .lineTo(50, y)
+        .strokeColor('#cccccc')
+        .stroke();
+    }
+  }
+
+  // X-axis point labels (bottom)
+  const pointStep = Math.ceil(maxPoints / 8); // Show ~8 point labels
+  for (let i = 0; i < maxPoints; i += pointStep) {
+    const x = 50 + ((i / (maxPoints - 1)) * chartWidth);
+    doc.fontSize(8).fillColor('black').text(`P${i + 1}`, x - 8, yPos + chartHeight + 5);
+  }
+
+  // Y-axis label
+  doc.fontSize(10).fillColor('black').text('Time', 10, yPos + chartHeight / 2 - 10);
+
+  // X-axis label
+  doc.fontSize(10).fillColor('black').text('Data Points', 50 + chartWidth / 2 - 30, yPos + chartHeight + 25);
+
+  return yPos + chartHeight + 70 + (chartData.datasets.length * 15);
 }
 
 function addFooter(doc, currentPage, totalPages) {
@@ -269,47 +300,59 @@ function getSampleData() {
             title: 'Performance Chart',
             type: 'chart',
             data: {
-              title: 'Performance Metrics Time Series',
+              title: 'Daily Work Time Tracking',
               datasets: [
                 {
-                  label: 'Tasks Completed',
+                  label: 'Project Alpha',
                   data: [
-                    { date: '2024-01-01', value: 12 },
-                    { date: '2024-01-15', value: 19 },
-                    { date: '2024-02-01', value: 15 },
-                    { date: '2024-02-15', value: 25 },
-                    { date: '2024-03-01', value: 22 },
-                    { date: '2024-03-15', value: 28 },
-                    { date: '2024-04-01', value: 24 },
-                    { date: '2024-04-15', value: 30 }
+                    { timeValue: '09:15' },
+                    { timeValue: '09:45' },
+                    { timeValue: '10:30' },
+                    { timeValue: '11:15' },
+                    { timeValue: '12:00' },
+                    { timeValue: '13:30' },
+                    { timeValue: '14:15' },
+                    { timeValue: '15:00' },
+                    { timeValue: '15:45' },
+                    { timeValue: '16:30' },
+                    { timeValue: '17:15' },
+                    { timeValue: '18:00' }
                   ],
                   color: '#3498db'
                 },
                 {
-                  label: 'Bug Fixes',
+                  label: 'Project Beta',
                   data: [
-                    { date: '2024-01-01', value: 5 },
-                    { date: '2024-01-15', value: 8 },
-                    { date: '2024-02-01', value: 6 },
-                    { date: '2024-02-15', value: 12 },
-                    { date: '2024-03-01', value: 10 },
-                    { date: '2024-03-15', value: 14 },
-                    { date: '2024-04-01', value: 11 },
-                    { date: '2024-04-15', value: 16 }
+                    { timeValue: '08:30' },
+                    { timeValue: '09:00' },
+                    { timeValue: '09:30' },
+                    { timeValue: '10:45' },
+                    { timeValue: '11:30' },
+                    { timeValue: '12:45' },
+                    { timeValue: '13:15' },
+                    { timeValue: '14:00' },
+                    { timeValue: '14:45' },
+                    { timeValue: '15:30' },
+                    { timeValue: '16:15' },
+                    { timeValue: '17:00' }
                   ],
                   color: '#e74c3c'
                 },
                 {
                   label: 'Code Reviews',
                   data: [
-                    { date: '2024-01-01', value: 8 },
-                    { date: '2024-01-15', value: 12 },
-                    { date: '2024-02-01', value: 10 },
-                    { date: '2024-02-15', value: 18 },
-                    { date: '2024-03-01', value: 15 },
-                    { date: '2024-03-15', value: 20 },
-                    { date: '2024-04-01', value: 17 },
-                    { date: '2024-04-15', value: 23 }
+                    { timeValue: '10:00' },
+                    { timeValue: '10:15' },
+                    { timeValue: '11:00' },
+                    { timeValue: '12:15' },
+                    { timeValue: '13:00' },
+                    { timeValue: '14:30' },
+                    { timeValue: '15:15' },
+                    { timeValue: '16:00' },
+                    { timeValue: '16:45' },
+                    { timeValue: '17:30' },
+                    { timeValue: '18:15' },
+                    { timeValue: '19:00' }
                   ],
                   color: '#2ecc71'
                 }
